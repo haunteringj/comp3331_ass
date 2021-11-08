@@ -4,8 +4,7 @@
 # and https://pythonprogramming.net/server-chatroom-sockets-tutorial-python-3/
 
 import socket
-import select
-import sys
+import sys 
 
 if len(sys.argv) != 2:
     print("Error: Usage: python3 server.py port_num")
@@ -42,12 +41,12 @@ while True:
     while True:
         try:
             message = client_socket.recv(1024).decode()
+            print(f"Recieved message from {client_addr}: \n{message}")
+
         except Exception as e:
             # Exception where client disconnects
             print(f"Error: {e}")
             clients.remove(client_socket)
-
-        print(f"Recieved message from {client_addr}: {message}")
 
         # If message is recieved, broadcast message to all clients
         for client_sock in clients:
