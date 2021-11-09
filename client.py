@@ -70,7 +70,7 @@ while True:
 
     message_send = input("Enter message: ")
     date = datetime.datetime.now()
-    message = f"{date} ; user: {username} ; {message_send}"
+    message = f"{message_send}"
     client_socket.send(message.encode())
 
 
