@@ -27,7 +27,6 @@ while True:
     username_validation = client_socket.recv(1024).decode()
     break
 
-auth = False
 attempts = 2
 if username_validation == "username_validated":
     # Check for server response after sending password
@@ -48,7 +47,7 @@ if username_validation == "username_validated":
             attempts = attempts - 1
         else:
             print("Error: password was entered incorrectly")
-            sys.exit()
+            sys.exit(1)
 # If username does not exist, create a new account
 elif username_validation == "username_invalid":
     print(f"> {username} does not have an associated account, please enter a password to create an account")
@@ -62,15 +61,26 @@ elif username_validation == "username_invalid":
         print("> Account successfully created!")
     else:
         print("> Error: Account creation was unsuccessful!")
-        sys.exit()
+        sys.exit(1)
 
+ 
 while True: 
-    #message_recv = client_socket.recv(1024).decode()
-    #print("Received message from" + "127.0.0.1:%d" %(server_port) + message_recv)
-
     message_send = input("Enter message: ")
-    date = datetime.datetime.now()
-    message = f"{message_send}"
-    client_socket.send(message.encode())
+    client_socket.send(message_send.encode())
 
+    # receive response from the server
+    # 1024 is a suggested packet size, you can specify it as 2048 or others
+    data = client_socket.recv(1024)
+    message_recv = data.decode()
 
+    # parse the message received from server and take corresponding actions
+    if message_recv == "":
+        print("[recv] Message from server is empty!")
+    else:
+        print(f"{message_recv}")
+        
+    ans = input('\nDo you want to continue(y/n) :')
+    if ans == 'y':
+        continue
+    else:
+        break

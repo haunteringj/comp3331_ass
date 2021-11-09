@@ -28,7 +28,8 @@ server_socket.bind(server_addr)
 
 print("> Listening for connections on 127.0.0.1:%d" %(server_port),"...")        
 
-clients = {}
+sockets_list = []
+clients= {}
 
 #Multi-thread class for client
 #This class would be used to define the instance for each connection from each client
@@ -50,30 +51,38 @@ class ClientThread(Thread):
             self.process_login()
         
         while self.client_alive:
-            # use recv() to receive message from the client
+            # Use recv() to receive message from the client
             data = self.client_socket.recv(1024)
             message = data.decode()
+            
+            message_words = message.split()            
                     
-            # if the message from client is empty, the client would be off-line then set the client as offline (alive=Flase)
+            # If the message from client is empty, the client would be off-line then set the client as offline (alive=Flase)
             if message == '':
                 self.client_alive = False
                 print("> User disconnected - ", client_addr)
                 break
             
+            # If client uses the broadcast command, send messages to all online users except the sender and blocked sockets_list
+            if message_words[0] == "broadcast":
+                self.broadcast(message)
             #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! QUICK WAY FOR ME TO CLOSE SERVER
-            if message == 'q':
+            elif message == 'q':
                 sys.exit(1)
             else:
                 print(f"> Recieved message from {client_addr}: \n{message}")
     
-    """
-        You can create more customized APIs here, e.g., logic for processing user authentication
-        Each api can be used to handle one specific function, for example:
-        def process_login(self):
-            message = 'user credentials request'
-            self.clientSocket.send(message.encode())
-    """
+    # Method for broadcasting message
+    def broadcast(self, message):                
+        message = (f"> Broadcasting message from {clients[client_socket]}: {message}")
+        print(message)
+        for client_sock in clients:
+            #if client_sock != clients[client_socket]:
+            client_sock.send(message.encode())
+          
+    # Method for processing user logins and account creations
     def process_login(self):
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NEED TO ADD, USER CANNOT LOGIN TO AN ACCOUNT THAT IS BEING USED !!!!!!!!!!!!!!
     # Check if client's details are true. Client gets 3 attempts before being locked out
     # Check for username
         #while True:
@@ -104,8 +113,10 @@ class ClientThread(Thread):
                     if crediential[1] == credentials_password:
                         client_socket.send(("user_authorised").encode())
                                         
-                        # Add client to list of clients
-                        #clients.append(client_socket)
+                        # Add client to list of sockets_list
+                        sockets_list.append(client_socket)
+                        clients[client_socket] = credentials_username
+                        
                         print(f"> Accepting new connection from {crediential[0]}")
                         break 
 
@@ -127,8 +138,10 @@ class ClientThread(Thread):
             credientials_file.write("\n")
             credientials_file.write(new_credntials)
 
-            # Add client to list of clients
-            #clients.append(client_socket)
+            # Add client to list of sockets_list
+            sockets_list.append(client_socket)
+            clients[client_socket] = credentials_username
+
             print(f"> Accepting new connection from {credentials_username}")
             
             # Let client know, account creation was successful
