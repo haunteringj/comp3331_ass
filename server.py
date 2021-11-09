@@ -4,6 +4,7 @@
 # and https://pythonprogramming.net/server-chatroom-sockets-tutorial-python-3/
 
 import socket
+import threading
 import sys 
 
 if len(sys.argv) != 2:
@@ -27,7 +28,6 @@ server_socket.listen(1)
 # Create list of sockets and dict of clients
 clients = []
 
-
 print("Listening for connections on 127.0.0.1:%d" %(server_port),"...")
 
 # Infinite loop to listen to clients
@@ -43,11 +43,14 @@ while True:
 
     # Iterate through credentials file to check for username
     credientials_file = open("credentials.txt", "r+")
+    create_account = True
     for value in credientials_file:
         crediential = value.split()
         # If username exists, get password from client
         if crediential[0] == credentials_username:
             client_socket.send(("username_validated").encode())
+            create_account = False
+
             #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PRNTING USERS PASSWORDS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             print(crediential[1])
 
@@ -75,23 +78,22 @@ while True:
                     client_socket.send(("Error: Incorrect password. Breaking connection with this client").encode())
                     break
 
+    if create_account == True:
         # If username does not exist, create a new account
-        else:
-            client_socket.send(("username_invalid").encode())
-            credentials_password = client_socket.recv(1024).decode()
-            new_credntials = credentials_username + ' ' + credentials_password
-            # Append new account to credentials file
-            credientials_file.write("\n")
-            credientials_file.write(new_credntials)
+        client_socket.send(("username_invalid").encode())
+        credentials_password = client_socket.recv(1024).decode()
+        new_credntials = credentials_username + ' ' + credentials_password
+        # Append new account to credentials file
+        credientials_file.write("\n")
+        credientials_file.write(new_credntials)
 
-            # Add client to list of clients
-            clients.append(client_socket)
-            print(f"Accepting new connection from {credentials_username}")
-            
-            # Let client know, account creation was successful
-            client_socket.send(("account_created").encode())
-            break
-    # Close credentials file
+        # Add client to list of clients
+        clients.append(client_socket)
+        print(f"Accepting new connection from {credentials_username}")
+        
+        # Let client know, account creation was successful
+        client_socket.send(("account_created").encode())
+        # Close credentials file
     credientials_file.close()
 
     # Recieve/listen for messages sent by client

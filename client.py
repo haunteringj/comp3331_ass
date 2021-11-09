@@ -5,32 +5,6 @@ import socket
 import sys
 import datetime
 
-# Funtion to authorise client
-def authorisation(client_socket):
-    # Authorise client's username
-    client_socket.send(username.encode())
-
-    # Check for server response after sending username
-    while True:
-        username_validation = client_socket.recv(1024).decode()
-        break
-
-    if username_validation == "username_validated":
-        password = input("Enter password: ")
-        # Send client's password for authorisation
-        client_socket.send(password.encode())
-
-    # Check for server response after sending password
-    while True:
-        password_validation = client_socket.recv(1024).decode()
-        break
-
-    # If password is validated, return true. else return false
-    if password_validation == "user_authorised":
-        return True
-    else:
-        return False
-
 # Finding given port number. Raise error if invalid port number.
 server_port = int(sys.argv[1])
 if server_port == 80 or server_port == 8080 or server_port < 1024:
