@@ -66,13 +66,14 @@ elif username_validation == "username_invalid":
  
 while True: 
     message_send = input("Enter message: ")
-    client_socket.send(message_send.encode())
+    client_socket.sendall(message_send.encode())
 
     # receive response from the server
     # 1024 is a suggested packet size, you can specify it as 2048 or others
-    data = client_socket.recv(1024)
-    message_recv = data.decode()
-
+    message_recv = client_socket.recv(1024).decode()
+    
+    print(f"{message_recv}")
+    
     # parse the message received from server and take corresponding actions
     if message_recv == "":
         print("[recv] Message from server is empty!")

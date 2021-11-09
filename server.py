@@ -71,6 +71,9 @@ class ClientThread(Thread):
                 sys.exit(1)
             else:
                 print(f"> Recieved message from {client_addr}: \n{message}")
+                response = ("message receieved")
+                client_socket.send(response.encode())
+
     
     # Method for broadcasting message
     def broadcast(self, message):                
