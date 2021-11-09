@@ -5,17 +5,18 @@
 
 from socket import *
 from threading import Thread
-import sys, select
+import sys
+import select
 
 # Check for arguments when starting server.py
 if len(sys.argv) != 2:
-    print("Error: Usage: python3 server.py port_num")
+    print("> Error: Usage: python3 server.py port_num")
     sys.exit(1)
 
 # Finding given port number. Raise error if invalid port number.
 server_port = int(sys.argv[1])
 if server_port == 80 or server_port == 8080 or server_port < 1024:
-    print("Error: Use a standard port number")
+    print("> Error: Use a standard port number")
     sys.exit(1)
 
 server_addr = ('localhost', server_port)
@@ -24,6 +25,8 @@ server_addr = ('localhost', server_port)
 server_socket = socket(AF_INET, SOCK_STREAM)
 #server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind(server_addr)
+
+print("> Listening for connections on 127.0.0.1:%d" %(server_port),"...")        
 
 clients = {}
 
@@ -35,41 +38,33 @@ class ClientThread(Thread):
         self.client_addr = client_addr
         self.client_socket = client_socket
         self.client_alive = False
-        
-        print("===== New connection created for: ", client_addr)
+
+        print("> New connection created for", client_addr)
+
         self.client_alive = True
         
     def run(self):
         message = ''
         
+        if self.client_alive:
+            self.process_login()
+        
         while self.client_alive:
             # use recv() to receive message from the client
             data = self.client_socket.recv(1024)
             message = data.decode()
-            
+                    
             # if the message from client is empty, the client would be off-line then set the client as offline (alive=Flase)
             if message == '':
                 self.client_alive = False
-                print("===== the user disconnected - ", client_addr)
+                print("> User disconnected - ", client_addr)
                 break
             
-            # handle message from the client
-            if message == 'login':
-                print("[recv] New login request")
-                self.process_login()
-            elif message == 'download':
-                print("[recv] Download request")
-                message = 'download filename'
-                print("[send] " + message)
-                self.client_socket.send(message.encode())
             #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! QUICK WAY FOR ME TO CLOSE SERVER
-            elif message == 'q':
-                exit()
+            if message == 'q':
+                sys.exit(1)
             else:
-                print("[recv] " + message)
-                print("[send] Cannot understand this message")
-                message = 'Cannot understand this message'
-                self.client_socket.send(message.encode())
+                print(f"> Recieved message from {client_addr}: \n{message}")
     
     """
         You can create more customized APIs here, e.g., logic for processing user authentication
@@ -81,9 +76,10 @@ class ClientThread(Thread):
     def process_login(self):
     # Check if client's details are true. Client gets 3 attempts before being locked out
     # Check for username
-        while True:
-            credentials_username = client_socket.recv(1024).decode()
-            break
+        #while True:
+        credentials_username = client_socket.recv(1024).decode()
+            #break
+        print("> " + credentials_username)
 
         # Iterate through credentials file to check for username
         credientials_file = open("credentials.txt", "r+")
@@ -96,7 +92,7 @@ class ClientThread(Thread):
                 create_account = False
 
                 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PRNTING USERS PASSWORDS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                print(crediential[1])
+                print("> " + crediential[1])
 
                 # Check if password matches username
                 attempts = 2
@@ -109,8 +105,8 @@ class ClientThread(Thread):
                         client_socket.send(("user_authorised").encode())
                                         
                         # Add client to list of clients
-                        clients.append(client_socket)
-                        print(f"Accepting new connection from {crediential[0]}")
+                        #clients.append(client_socket)
+                        print(f"> Accepting new connection from {crediential[0]}")
                         break 
 
                     # Check if the client has not attempted to login more that 3 times
@@ -132,18 +128,13 @@ class ClientThread(Thread):
             credientials_file.write(new_credntials)
 
             # Add client to list of clients
-            clients.append(client_socket)
-            print(f"Accepting new connection from {credentials_username}")
+            #clients.append(client_socket)
+            print(f"> Accepting new connection from {credentials_username}")
             
             # Let client know, account creation was successful
             client_socket.send(("account_created").encode())
             # Close credentials file
         credientials_file.close()
-
-
-print("Listening for connections on 127.0.0.1:%d" %(server_port),"...")
-print("Waiting for connection request from clients...")
-
 
 while True:
     server_socket.listen()

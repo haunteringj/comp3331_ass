@@ -8,7 +8,7 @@ import datetime
 # Finding given port number. Raise error if invalid port number.
 server_port = int(sys.argv[1])
 if server_port == 80 or server_port == 8080 or server_port < 1024:
-    print("Error: Use a standard port number")
+    print("> Error: Use a standard port number")
     sys.exit(1)
 
 # Creating socket and intially setting up the client
@@ -40,18 +40,18 @@ if username_validation == "username_validated":
 
         # If password is validated, return true. else return false
         if password_validation == "user_authorised":
-            print(f"{username} successfully connected to 127.0.0.1:{server_port}")
+            print(f"> {username} successfully connected to 127.0.0.1:{server_port}")
             break
         # User gets only 3 attempts to enter the correct password
         elif attempts > 0: 
-            print(f"Error: Incorrect password. Attempts remaining {attempts}!")
+            print(f"> Error: Incorrect password. Attempts remaining {attempts}!")
             attempts = attempts - 1
         else:
             print("Error: password was entered incorrectly")
             sys.exit()
 # If username does not exist, create a new account
 elif username_validation == "username_invalid":
-    print(f"{username} does not have an associated account, please enter a password to create an account")
+    print(f"> {username} does not have an associated account, please enter a password to create an account")
     password = input("Enter password: ")
     # Send password to server
     client_socket.send(password.encode())
@@ -59,9 +59,9 @@ elif username_validation == "username_invalid":
     account_creation = client_socket.recv(1024).decode()
 
     if account_creation == "account_created":
-        print("Account successfully created!")
+        print("> Account successfully created!")
     else:
-        print("Error: Account creation was unsuccessful!")
+        print("> Error: Account creation was unsuccessful!")
         sys.exit()
 
 while True: 
