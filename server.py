@@ -66,11 +66,17 @@ class ClientThread(Thread):
             
             # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
             if message_words[0] == "message":
-                print(message)
+                # Check if command is properly used
+                if len(message_words) == 1:
+                    message = "> Message has not been sent. Command usage: message <user> <message>"
+                    self.client_socket.send(message.encode())    
+                else:
+                    self.message(message_words)
+                    
             elif message_words[0] == "broadcast":
                 self.broadcast(message)
             elif message == "whoelse":
-                print("message")
+                self.whoelse()
             elif message == "whoelsesince":
                 print("message")
             elif message_words[0] == "block":
@@ -82,6 +88,41 @@ class ClientThread(Thread):
                 self.logout()
             else:
                 print(f"> Recieved message from {client_addr}: \n{message}")
+
+    # Function to directly message another online user
+    def message(self, message_words):
+        message = ""
+
+        # Parse message so that it can be sent cleanly
+        couter = 0
+        for element in message_words:
+            if couter ==  0:
+                message += "> "
+                message += clients[self.client_socket]
+                message += " has"
+                message += " messaged "
+                couter += 1
+            elif couter == 1:
+                message += element
+                message += ": "
+                couter += 1
+            else: 
+                message += " "
+                message += element
+
+        # Find recipient's socket and send the message
+        success = False
+        for socket, user in clients.items():
+            if user == message_words[1]:
+                print(message)
+                socket.send(message.encode())
+                success = True
+        
+        # Let the sender know if their message was not sent
+        if success == False:
+            message = (f"> Message has not been sent. {message_words[1]} is offline")
+            self.client_socket.send(message.encode())        
+
 
     # Method for broadcasting message
     def broadcast(self, message):                
@@ -99,6 +140,16 @@ class ClientThread(Thread):
             if socket != self.client_socket:
                 socket.send(message.encode())
                 
+                
+    def whoelse(self):
+        message = "> Currently, the following users are online:"
+        # Iterate through all online sockets and add a list of usernames
+        for socket, user in clients.items():
+            if socket != self.client_socket:
+                message += " " + user
+                
+        self.client_socket.send(message.encode())        
+    
     # Method for processing user logouts
     def logout(self):
         print("logging out")
@@ -106,7 +157,7 @@ class ClientThread(Thread):
         self.broadcast(message)
         message = ("disconnecting_user_logout")
         self.client_socket.send(message.encode())        
-        sockets_list.remove(self.client_socket)
+        sockets_list.remove(client_socket)
         
     # Method for processing user logins and account creations
     def process_login(self):
