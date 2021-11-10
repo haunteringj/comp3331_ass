@@ -28,7 +28,9 @@ server_socket.bind(server_addr)
 
 print("> Listening for connections on 127.0.0.1:%d" %(server_port),"...")        
 
+# List of active sockets
 sockets_list = []
+# List of all clients which have joined. Used to keep record of users names and their sockets
 clients= {}
 
 #Multi-thread class for client
@@ -39,8 +41,6 @@ class ClientThread(Thread):
         self.client_addr = client_addr
         self.client_socket = client_socket
         self.client_alive = False
-
-        print("> New connection created for", client_addr)
 
         self.client_alive = True
         
@@ -61,43 +61,60 @@ class ClientThread(Thread):
             if message == '':
                 self.client_alive = False
                 print("> User disconnected - ", client_addr)
+                sockets_list.remove(client_socket)
                 break
             
             # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
-            if message_words[0] == "broadcast":
+            if message_words[0] == "message":
+                print(message)
+            elif message_words[0] == "broadcast":
                 self.broadcast(message)
-                #message = (f"> Broadcasting message from {clients[client_socket]}: {message}")
-                #print(message)
-                #response = ("message_receieved")
-                #client_socket.send(response.encode())
-          
-            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! QUICK WAY FOR ME TO CLOSE SERVER
-            elif message == 'q':
-                sys.exit(1)
+            elif message == "whoelse":
+                print("message")
+            elif message == "whoelsesince":
+                print("message")
+            elif message_words[0] == "block":
+                print("message")
+            elif message_words[0] == "unblock":
+                print("message")
+            # If client uses the logout command, broadcast presence and delete socket from sockets_list
+            elif message == 'logout':
+                self.logout()
             else:
                 print(f"> Recieved message from {client_addr}: \n{message}")
-                response = ("message_receieved")
-                self.client_socket.send(response.encode())
-
 
     # Method for broadcasting message
     def broadcast(self, message):                
-        message = (f"> Broadcasting message from {clients[client_socket]}: {message}")
+        
+        # If message is a presence message, do not edit message
+        if message == (f"> {client_addr} has joined the server!"):
+            print(message)
+        else:
+            message = (f"> Broadcasting message from {clients[client_socket]}: {message}")
         print(message)
-        #response = ("message_receieved")
-        #client_socket.send(response.encode())
+
+        # Iterate through all online sockets and send message to all users
         for socket in sockets_list:
-            #if socket != client_socket:
-            socket.send(message.encode())
-          
+            # Do not broadcast to the sender
+            if socket != self.client_socket:
+                socket.send(message.encode())
+                
+    # Method for processing user logouts
+    def logout(self):
+        print("logging out")
+        message = (f"> {clients[client_socket]} has disconnected from the server")
+        self.broadcast(message)
+        message = ("disconnecting_user_logout")
+        self.client_socket.send(message.encode())        
+        sockets_list.remove(self.client_socket)
+        
     # Method for processing user logins and account creations
     def process_login(self):
     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NEED TO ADD, USER CANNOT LOGIN TO AN ACCOUNT THAT IS BEING USED !!!!!!!!!!!!!!
     # Check if client's details are true. Client gets 3 attempts before being locked out
     # Check for username
-        #while True:
         credentials_username = client_socket.recv(1024).decode()
-            #break
+        
         print("> " + credentials_username)
 
         # Iterate through credentials file to check for username
@@ -124,10 +141,13 @@ class ClientThread(Thread):
                         self.client_socket.send(("user_authorised").encode())
                                         
                         # Add client to list of sockets_list
-                        sockets_list.append(client_socket)
+                        sockets_list.append(self.client_socket)
                         clients[client_socket] = credentials_username
                         
+                        # Broadcast presence when someone joins the server
                         print(f"> Accepting new connection from {crediential[0]}")
+                        presence_broadcast = (f"> {credentials_username} has joined the server!")
+                        self.broadcast(presence_broadcast)
                         break 
 
                     # Check if the client has not attempted to login more that 3 times
@@ -149,10 +169,13 @@ class ClientThread(Thread):
             credientials_file.write(new_credntials)
 
             # Add client to list of sockets_list
-            sockets_list.append(client_socket)
+            sockets_list.append(self.client_socket)
             clients[client_socket] = credentials_username
 
+            # Broadcast presence when someone joins the server
             print(f"> Accepting new connection from {credentials_username}")
+            presence_broadcast = (f"> {credentials_username} has joined the server!")
+            self.broadcast(presence_broadcast)
             
             # Let client know, account creation was successful
             self.client_socket.send(("account_created").encode())
