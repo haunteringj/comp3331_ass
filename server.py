@@ -63,25 +63,32 @@ class ClientThread(Thread):
                 print("> User disconnected - ", client_addr)
                 break
             
-            # If client uses the broadcast command, send messages to all online users except the sender and blocked sockets_list
+            # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
             if message_words[0] == "broadcast":
                 self.broadcast(message)
+                #message = (f"> Broadcasting message from {clients[client_socket]}: {message}")
+                #print(message)
+                #response = ("message_receieved")
+                #client_socket.send(response.encode())
+          
             #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! QUICK WAY FOR ME TO CLOSE SERVER
             elif message == 'q':
                 sys.exit(1)
             else:
                 print(f"> Recieved message from {client_addr}: \n{message}")
-                response = ("message receieved")
-                client_socket.send(response.encode())
+                response = ("message_receieved")
+                self.client_socket.send(response.encode())
 
-    
+
     # Method for broadcasting message
     def broadcast(self, message):                
         message = (f"> Broadcasting message from {clients[client_socket]}: {message}")
         print(message)
-        for client_sock in clients:
-            #if client_sock != clients[client_socket]:
-            client_sock.send(message.encode())
+        #response = ("message_receieved")
+        #client_socket.send(response.encode())
+        for socket in sockets_list:
+            #if socket != client_socket:
+            socket.send(message.encode())
           
     # Method for processing user logins and account creations
     def process_login(self):
@@ -100,7 +107,7 @@ class ClientThread(Thread):
             crediential = value.split()
             # If username exists, get password from client
             if crediential[0] == credentials_username:
-                client_socket.send(("username_validated").encode())
+                self.client_socket.send(("username_validated").encode())
                 create_account = False
 
                 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! PRNTING USERS PASSWORDS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -114,7 +121,7 @@ class ClientThread(Thread):
 
                     # Check if password matches
                     if crediential[1] == credentials_password:
-                        client_socket.send(("user_authorised").encode())
+                        self.client_socket.send(("user_authorised").encode())
                                         
                         # Add client to list of sockets_list
                         sockets_list.append(client_socket)
@@ -125,16 +132,16 @@ class ClientThread(Thread):
 
                     # Check if the client has not attempted to login more that 3 times
                     elif attempts > 0:
-                        client_socket.send(("Error: Incorrect password. Attempts remaining {attempts}").encode())
+                        self.client_socket.send(("Error: Incorrect password. Attempts remaining {attempts}").encode())
                         attempts = attempts - 1
                     # Otherwise break connection with the client
                     else: 
-                        client_socket.send(("Error: Incorrect password. Breaking connection with this client").encode())
+                        self.client_socket.send(("Error: Incorrect password. Breaking connection with this client").encode())
                         break
 
         if create_account == True:
             # If username does not exist, create a new account
-            client_socket.send(("username_invalid").encode())
+            self.client_socket.send(("username_invalid").encode())
             credentials_password = client_socket.recv(1024).decode()
             new_credntials = credentials_username + ' ' + credentials_password
             # Append new account to credentials file
@@ -148,7 +155,7 @@ class ClientThread(Thread):
             print(f"> Accepting new connection from {credentials_username}")
             
             # Let client know, account creation was successful
-            client_socket.send(("account_created").encode())
+            self.client_socket.send(("account_created").encode())
             # Close credentials file
         credientials_file.close()
 

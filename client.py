@@ -71,16 +71,15 @@ while True:
     # receive response from the server
     # 1024 is a suggested packet size, you can specify it as 2048 or others
     message_recv = client_socket.recv(1024).decode()
-    
-    print(f"{message_recv}")
-    
+        
     # parse the message received from server and take corresponding actions
     if message_recv == "":
         print("[recv] Message from server is empty!")
     else:
-        print(f"{message_recv}")
+        print("\n")
+        print(f"> server responded with, \n{message_recv}")
         
-    ans = input('\nDo you want to continue(y/n) :')
+    ans = input('\nDo you want to continue (y/n) :')
     if ans == 'y':
         continue
     else:
