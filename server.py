@@ -6,7 +6,6 @@
 from socket import *
 from threading import Thread
 import sys
-import select
 import datetime
 
 # Check for arguments when starting server.py
@@ -59,21 +58,27 @@ class ClientThread(Thread):
         
         while self.client_alive:
             
-            # Start timeout
-            current_time = datetime.datetime.now()
-            minus_timeout = current_time - datetime.timedelta(seconds=timeout)
-            
             # Use recv() to receive message from the client
             data = self.client_socket.recv(1024)
             message = data.decode()
             
+            current_time = datetime.datetime.now()
+            #clients[client_socket][2] = current_time
+            active_clients[client_socket][2] = current_time
+            
+            print(active_clients)
+            
             message_words = message.split()            
                     
-            # If the message from client is empty, the client would be off-line then set the client as offline (alive=Flase)
+            # Case where user violently disconnects connection via cntrl+c or otherwise
             if message == '':
+                print("> User disconnected -", client_addr)
+                # Remove client from active sockets     
+                sockets_list.remove(self.client_socket)
+                active_clients.pop(self.client_socket)
+                
                 self.client_alive = False
-                print("> User disconnected - ", client_addr)
-
+            
                 break
             
             # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
@@ -174,6 +179,8 @@ class ClientThread(Thread):
             sockets_list.remove(self.client_socket)
             active_clients.pop(self.client_socket)
             
+            self.client_alive = False
+            
         else:
             message = (f"> User {clients[client_socket]} has failed to logout")
             self.client_socket.send(message.encode())   
@@ -217,7 +224,7 @@ class ClientThread(Thread):
                         # Add to list of active clients including their date and time
                         current_time = datetime.datetime.now()
                         active_clients[client_socket] = [credentials_username, current_time, current_time]
-                        all_clients[client_socket] = [credentials_username, current_time]
+                        all_clients[client_socket] = [credentials_username, current_time, current_time]
                         
                         # Broadcast presence when someone joins the server
                         print(f"> Accepting new connection from {crediential[0]}")
@@ -250,7 +257,7 @@ class ClientThread(Thread):
             # Add to list of active clients including their date and time
             current_time = datetime.datetime.now()
             active_clients[client_socket] = [credentials_username, current_time, current_time]
-            all_clients[client_socket] = [credentials_username, current_time]
+            all_clients[client_socket] = [credentials_username, current_time, current_time]
 
             # Broadcast presence when someone joins the server
             print(f"> Accepting new connection from {credentials_username}")
@@ -265,5 +272,5 @@ class ClientThread(Thread):
 while True:
     server_socket.listen()
     client_socket, client_addr = server_socket.accept()
-    clientThread = ClientThread(client_addr, client_socket)
-    clientThread.start()
+    client_thread = ClientThread(client_addr, client_socket)
+    client_thread.start()

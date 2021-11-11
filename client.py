@@ -65,6 +65,7 @@ def send():
             sys.exit(1)
             
         client_socket.sendall(message_send.encode())
+        client_socket.settimeout(5)
 
 # Function for receiving messages. uses threading
 def recv():
@@ -81,7 +82,7 @@ def recv():
             sys.exit(1)
         else:
             print(f"> Message recieved, \n{message_recv}")
-        
+
 # Check for arguments when starting client.py
 if len(sys.argv) != 2:
     print("> Error: Usage: python3 client.py port_num")
@@ -103,7 +104,6 @@ auth()
     
 # Begin send thread
 print("> To send a message, type in the terminal!")
-
 send_thread = threading.Thread(target = send)
 send_thread.start()
 
