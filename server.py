@@ -7,11 +7,14 @@ from socket import *
 from threading import Thread
 import sys
 import select
+import datetime
 
 # Check for arguments when starting server.py
-if len(sys.argv) != 2:
+if len(sys.argv) != 3:
     print("> Error: Usage: python3 server.py port_num")
     sys.exit(1)
+    
+timeout = int(sys.argv[2])
 
 # Finding given port number. Raise error if invalid port number.
 server_port = int(sys.argv[1])
@@ -31,7 +34,11 @@ print("> Listening for connections on 127.0.0.1:%d" %(server_port),"...")
 # List of active sockets
 sockets_list = []
 # List of all clients which have joined. key is the socket, value is a list containing name, login_time, last_active_time
-clients= {}
+clients = {}
+# List of active clients. key socket, contains name, login time, and last active time
+active_clients = {}
+# List of all clients. key socket, contains name, login time, and last active time
+all_clients = {}
 
 #Multi-thread class for client
 #This class would be used to define the instance for each connection from each client
@@ -51,6 +58,11 @@ class ClientThread(Thread):
             self.process_login()
         
         while self.client_alive:
+            
+            # Start timeout
+            current_time = datetime.datetime.now()
+            minus_timeout = current_time - datetime.timedelta(seconds=timeout)
+            
             # Use recv() to receive message from the client
             data = self.client_socket.recv(1024)
             message = data.decode()
@@ -61,7 +73,7 @@ class ClientThread(Thread):
             if message == '':
                 self.client_alive = False
                 print("> User disconnected - ", client_addr)
-                #.remove(client_socket)
+
                 break
             
             # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
@@ -140,7 +152,6 @@ class ClientThread(Thread):
             if socket != self.client_socket:
                 socket.send(message.encode())
                 
-                
     def whoelse(self):
         message = "> Currently, the following users are online:"
         # Iterate through all online sockets and add a list of usernames
@@ -154,10 +165,15 @@ class ClientThread(Thread):
     def logout(self):
         if self.client_socket in sockets_list:        
             message = (f"> {clients[client_socket]} has disconnected from the server")
+            # Broadcast presence
             self.broadcast(message)
             message = ("disconnecting_user_logout")
-            self.client_socket.send(message.encode())        
+            self.client_socket.send(message.encode())   
+            
+            # Remove client from active sockets     
             sockets_list.remove(self.client_socket)
+            active_clients.pop(self.client_socket)
+            
         else:
             message = (f"> User {clients[client_socket]} has failed to logout")
             self.client_socket.send(message.encode())   
@@ -198,6 +214,11 @@ class ClientThread(Thread):
                         sockets_list.append(self.client_socket)
                         clients[client_socket] = credentials_username
                         
+                        # Add to list of active clients including their date and time
+                        current_time = datetime.datetime.now()
+                        active_clients[client_socket] = [credentials_username, current_time, current_time]
+                        all_clients[client_socket] = [credentials_username, current_time]
+                        
                         # Broadcast presence when someone joins the server
                         print(f"> Accepting new connection from {crediential[0]}")
                         presence_broadcast = (f"> {credentials_username} has joined the server!")
@@ -225,6 +246,11 @@ class ClientThread(Thread):
             # Add client to list of sockets_list
             sockets_list.append(self.client_socket)
             clients[client_socket] = credentials_username
+            
+            # Add to list of active clients including their date and time
+            current_time = datetime.datetime.now()
+            active_clients[client_socket] = [credentials_username, current_time, current_time]
+            all_clients[client_socket] = [credentials_username, current_time]
 
             # Broadcast presence when someone joins the server
             print(f"> Accepting new connection from {credentials_username}")
