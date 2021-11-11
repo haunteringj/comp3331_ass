@@ -30,7 +30,7 @@ print("> Listening for connections on 127.0.0.1:%d" %(server_port),"...")
 
 # List of active sockets
 sockets_list = []
-# List of all clients which have joined. Used to keep record of users names and their sockets
+# List of all clients which have joined. key is the socket, value is a list containing name, login_time, last_active_time
 clients= {}
 
 #Multi-thread class for client
@@ -61,7 +61,7 @@ class ClientThread(Thread):
             if message == '':
                 self.client_alive = False
                 print("> User disconnected - ", client_addr)
-                sockets_list.remove(client_socket)
+                #.remove(client_socket)
                 break
             
             # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
@@ -112,8 +112,8 @@ class ClientThread(Thread):
 
         # Find recipient's socket and send the message
         success = False
-        for socket, user in clients.items():
-            if user == message_words[1]:
+        for socket in sockets_list:
+            if clients[socket] == message_words[1]:
                 print(message)
                 socket.send(message.encode())
                 success = True
@@ -152,13 +152,16 @@ class ClientThread(Thread):
     
     # Method for processing user logouts
     def logout(self):
-        print("logging out")
-        message = (f"> {clients[client_socket]} has disconnected from the server")
-        self.broadcast(message)
-        message = ("disconnecting_user_logout")
-        self.client_socket.send(message.encode())        
-        sockets_list.remove(client_socket)
-        
+        if self.client_socket in sockets_list:        
+            message = (f"> {clients[client_socket]} has disconnected from the server")
+            self.broadcast(message)
+            message = ("disconnecting_user_logout")
+            self.client_socket.send(message.encode())        
+            sockets_list.remove(self.client_socket)
+        else:
+            message = (f"> User {clients[client_socket]} has failed to logout")
+            self.client_socket.send(message.encode())   
+            
     # Method for processing user logins and account creations
     def process_login(self):
     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NEED TO ADD, USER CANNOT LOGIN TO AN ACCOUNT THAT IS BEING USED !!!!!!!!!!!!!!

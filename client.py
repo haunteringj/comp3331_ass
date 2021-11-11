@@ -58,7 +58,12 @@ def auth():
 # Function for sending messages. uses threading    
 def send():
     while True:
+
         message_send = input("> ")
+        
+        if message_send == "":
+            print("> User disconnected.")
+            sys.exit(1)
         client_socket.sendall(message_send.encode())
 
 # Function for receiving messages. uses threading
@@ -72,8 +77,9 @@ def recv():
         if message_recv == "":
             print("> Message from server is empty!")
         elif message_recv == "disconnecting_user_logout":
-            print("> Disconnecting from server. See you next time!")
-            client_socket.close()
+            print("Disconnecting from server. See you next time!")
+            client_alive = False
+            #client_socket.close()
             sys.exit(1)
         else:
             print(f"> Message recieved, \n{message_recv}")
@@ -96,6 +102,9 @@ client_socket.setblocking(1)
 
 # Get user to authorise
 auth()
+
+# Boolean for client is alive
+client_alive = True
     
 # Begin send thread
 print("> To send a message, type in the terminal!")
