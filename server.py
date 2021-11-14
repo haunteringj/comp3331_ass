@@ -7,6 +7,7 @@ from socket import *
 from threading import Thread
 import sys
 import datetime
+import time
 
 # Check for arguments when starting server.py
 if len(sys.argv) != 3:
@@ -32,12 +33,15 @@ print("> Listening for connections on 127.0.0.1:%d" %(server_port),"...")
 
 # List of active sockets
 sockets_list = []
-# List of all clients which have joined. key is the socket, value is a list containing name, login_time, last_active_time
+# Dict of all clients which have joined. key is the socket, value is a list containing names
 clients = {}
-# List of active clients. key socket, contains name, login time, and last active time
+# Dict of active clients. key socket, contains name, login time, and last active time
 active_clients = {}
-# List of all clients. key socket, contains name, login time, and last active time
+# Dict of all clients. key socket, contains name, login time, and last active time
 all_clients = {}
+# List of all offline messages, username as key, message as value. Stored as key|message
+offline_messages = []
+
 
 #Multi-thread class for client
 #This class would be used to define the instance for each connection from each client
@@ -55,19 +59,15 @@ class ClientThread(Thread):
         
         if self.client_alive:
             self.process_login()
+            
+            self.offline_messages()
         
         while self.client_alive:
             
             # Use recv() to receive message from the client
             data = self.client_socket.recv(1024)
             message = data.decode()
-            
-            current_time = datetime.datetime.now()
-            #clients[client_socket][2] = current_time
-            active_clients[client_socket][2] = current_time
-            
-            print(active_clients)
-            
+
             message_words = message.split()            
                     
             # Case where user violently disconnects connection via cntrl+c or otherwise
@@ -137,9 +137,21 @@ class ClientThread(Thread):
         
         # Let the sender know if their message was not sent
         if success == False:
+            # Since user is offline, add to offline_messages
+            offline_messages.append(f"{message_words[1]}|{message}")
+            
+            # Tell the client that their message has not been sent
             message = (f"> Message has not been sent. {message_words[1]} is offline")
             self.client_socket.send(message.encode())        
 
+    def offline_messages(self):
+        for messages in offline_messages:
+            message = messages.split("|")
+            
+            if clients[self.client_socket] == message[0]:
+                print("\n")
+                message = "> Someone messaged you while you were offline" + "\n" + message[1]
+                self.client_socket.send(message.encode())        
 
     # Method for broadcasting message
     def broadcast(self, message):                
@@ -222,7 +234,7 @@ class ClientThread(Thread):
                         clients[client_socket] = credentials_username
                         
                         # Add to list of active clients including their date and time
-                        current_time = datetime.datetime.now()
+                        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         active_clients[client_socket] = [credentials_username, current_time, current_time]
                         all_clients[client_socket] = [credentials_username, current_time, current_time]
                         
@@ -255,7 +267,7 @@ class ClientThread(Thread):
             clients[client_socket] = credentials_username
             
             # Add to list of active clients including their date and time
-            current_time = datetime.datetime.now()
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             active_clients[client_socket] = [credentials_username, current_time, current_time]
             all_clients[client_socket] = [credentials_username, current_time, current_time]
 

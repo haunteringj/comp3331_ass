@@ -65,7 +65,7 @@ def send():
             sys.exit(1)
             
         client_socket.sendall(message_send.encode())
-        client_socket.settimeout(5)
+        #client_socket.settimeout(5)
 
 # Function for receiving messages. uses threading
 def recv():
