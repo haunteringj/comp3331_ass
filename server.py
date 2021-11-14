@@ -11,8 +11,8 @@ import time
 
 # Check for arguments when starting server.py
 if len(sys.argv) != 3:
-    print("> Error: Usage: python3 server.py port_num")
-    sys.exit(1)
+    print("> Error: Usage: python3 server.py <server_port> <block_duration> <timeout>")
+    sys.exit(1) 
     
 timeout = int(sys.argv[2])
 
@@ -41,6 +41,8 @@ active_clients = {}
 all_clients = {}
 # List of all offline messages, username as key, message as value. Stored as key|message
 offline_messages = []
+# List of all blocked users. username as key blocked clients as list. one user can block multiple clients
+blocked = {}
 
 
 #Multi-thread class for client
@@ -59,7 +61,6 @@ class ClientThread(Thread):
         
         if self.client_alive:
             self.process_login()
-            
             self.offline_messages()
         
         while self.client_alive:
@@ -76,9 +77,7 @@ class ClientThread(Thread):
                 # Remove client from active sockets     
                 sockets_list.remove(self.client_socket)
                 active_clients.pop(self.client_socket)
-                
                 self.client_alive = False
-            
                 break
             
             # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
@@ -89,17 +88,33 @@ class ClientThread(Thread):
                     self.client_socket.send(message.encode())    
                 else:
                     self.message(message_words)
-                    
+            # Broadcast message to all clients
             elif message_words[0] == "broadcast":
                 self.broadcast(message)
+            # Reveal which other users are currently online
             elif message == "whoelse":
                 self.whoelse()
+            # Reveal which other users are online since a particluar time
             elif message == "whoelsesince":
                 print("message")
+            # Block a particular user
             elif message_words[0] == "block":
-                print("message")
+                # Check if command is properly used
+                if len(message_words) != 2:
+                    message = "> Error. Command usage: block <user>"
+                    self.client_socket.send(message.encode())    
+                else:
+                    message = message_words[1]
+                    self.block(message)
+            # Unblock a particular user
             elif message_words[0] == "unblock":
-                print("message")
+                # Check if command is properly used
+                if len(message_words) != 2:
+                    message = "> Error. Command usage: unblock <user>"
+                    self.client_socket.send(message.encode())    
+                else:
+                    message = message_words[1]
+                    self.unblock(message)
             # If client uses the logout command, broadcast presence and delete socket from sockets_list
             elif message == 'logout':
                 self.logout()
@@ -172,11 +187,54 @@ class ClientThread(Thread):
     def whoelse(self):
         message = "> Currently, the following users are online:"
         # Iterate through all online sockets and add a list of usernames
+        message_list = []
         for socket, user in clients.items():
             if socket != self.client_socket:
-                message += " " + user
-                
+                message_list.append(user)
+        
+        for user in message_list:
+            if user in blocked[clients[self.client_socket]]:
+                message_list.remove(user)
+
+        for item in message_list:
+            message += " " + item
+        
         self.client_socket.send(message.encode())        
+    
+    def block(self, user):
+        if user == clients[self.client_socket]:
+            message = "> Error. Cannot block yourself..."
+            self.client_socket.send(message.encode())   
+                         
+        else:
+            if clients[self.client_socket] not in blocked:
+                blocked[clients[self.client_socket]] = []
+            
+            for key in blocked:
+                if key == clients[self.client_socket]:
+                    if user not in blocked[key]:
+                        blocked[key].append(user)
+
+                    else:
+                        message = "> Error. User already blocked"
+                        self.client_socket.send(message.encode())   
+            
+            if user not in blocked:
+                blocked[user] = []
+                blocked[user].append(clients[self.client_socket])
+                
+        print(blocked)
+        
+    def unblock(self, user):
+        for key, value in blocked.items():
+            if key == clients[self.client_socket]:
+                if user in value:
+                    value.remove(user)
+                else:
+                    message = f"> {user} was already unblocked"
+                    self.client_socket.send(message.encode()) 
+                
+        print(blocked)
     
     # Method for processing user logouts
     def logout(self):
@@ -270,7 +328,7 @@ class ClientThread(Thread):
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             active_clients[client_socket] = [credentials_username, current_time, current_time]
             all_clients[client_socket] = [credentials_username, current_time, current_time]
-
+                            
             # Broadcast presence when someone joins the server
             print(f"> Accepting new connection from {credentials_username}")
             presence_broadcast = (f"> {credentials_username} has joined the server!")
