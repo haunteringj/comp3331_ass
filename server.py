@@ -82,12 +82,27 @@ class ClientThread(Thread):
             
             # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
             if message_words[0] == "message":
+                
+                message_blocked = False
+                
                 # Check if command is properly used
                 if len(message_words) == 1:
                     message = "> Message has not been sent. Command usage: message <user> <message>"
-                    self.client_socket.send(message.encode())    
-                else:
-                    self.message(message_words)
+                    self.client_socket.send(message.encode())   
+                else: 
+                    # Iterate through blocked dict to check if recipient has blocked the sender. If so, intercept message
+                    for key in blocked:
+                        if key == message_words[1]:
+                            if clients[self.client_socket] in blocked[key]:
+                                message_blocked = True
+                                message = "> Message has not been sent. Recipient has been blocked by user."
+                                print(message)
+                                self.client_socket.send(message.encode())   
+                    
+                    # If recipient is not blocked, send message
+                    if message_blocked == False:
+                        self.message(message_words)
+                    
             # Broadcast message to all clients
             elif message_words[0] == "broadcast":
                 self.broadcast(message)
@@ -123,6 +138,7 @@ class ClientThread(Thread):
 
     # Function to directly message another online user
     def message(self, message_words):
+
         message = ""
 
         # Parse message so that it can be sent cleanly
@@ -149,7 +165,7 @@ class ClientThread(Thread):
                 print(message)
                 socket.send(message.encode())
                 success = True
-        
+    
         # Let the sender know if their message was not sent
         if success == False:
             # Since user is offline, add to offline_messages
@@ -180,11 +196,23 @@ class ClientThread(Thread):
 
         # Iterate through all online sockets and send message to all users
         for socket in sockets_list:
+            block_message = False
+            
             # Do not broadcast to the sender
             if socket != self.client_socket:
-                socket.send(message.encode())
+                
+                # Iterate through blocked dict to check if recipient has blocked the sender. If so, intercept message
+                for key in blocked:
+                    if key == clients[self.client_socket]:
+                        if clients[socket] in blocked[key]:
+                            block_message = True
+                
+                if block_message == False:
+                    socket.send(message.encode())
+                        
                 
     def whoelse(self):
+        
         message = "> Currently, the following users are online:"
         # Iterate through all online sockets and add a list of usernames
         message_list = []
@@ -193,12 +221,21 @@ class ClientThread(Thread):
                 message_list.append(user)
         
         for user in message_list:
-            if user in blocked[clients[self.client_socket]]:
-                message_list.remove(user)
+            #if clients[self.client_socket] in blocked[user]:
+            #    message_list.remove(user)
+            
+            block_user = False
+            # Iterate through blocked dict to check if recipient has blocked the sender. If so, intercept message
+            for key, item in blocked.items():
+                if clients[self.client_socket] in item:
+                        block_user = True
+                # If user is blocked, remove them from the whoelse message
+                if block_user == True:
+                    message_list.remove(key)
 
+        # Parse list into a suitable string and send it to the user 
         for item in message_list:
             message += " " + item
-        
         self.client_socket.send(message.encode())        
     
     def block(self, user):
@@ -218,11 +255,6 @@ class ClientThread(Thread):
                     else:
                         message = "> Error. User already blocked"
                         self.client_socket.send(message.encode())   
-            
-            if user not in blocked:
-                blocked[user] = []
-                blocked[user].append(clients[self.client_socket])
-                
         print(blocked)
         
     def unblock(self, user):
