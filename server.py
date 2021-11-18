@@ -77,8 +77,12 @@ class ClientThread(Thread):
                 # Remove client from active sockets     
                 sockets_list.remove(self.client_socket)
                 active_clients.pop(self.client_socket)
+                print("> Attempting to remove already logged-in user's data")
                 self.client_alive = False
                 break
+            elif message == "already_logged_in":
+                print("> User disconnected -", client_addr)
+                self.client_alive = False
             
             # If client uses the broadcast command, send messages to all online users except the sender and blocked clients
             if message_words[0] == "message":
@@ -191,7 +195,7 @@ class ClientThread(Thread):
         if message == (f"> {client_addr} has joined the server!"):
             print(message)
         else:
-            message = (f"> Broadcasting message from {clients[client_socket]}: {message}")
+            message = (f"> Broadcasting message from {clients[self.client_socket]}: {message}")
         print(message)
 
         # Iterate through all online sockets and send message to all users
@@ -216,9 +220,9 @@ class ClientThread(Thread):
         message = "> Currently, the following users are online:"
         # Iterate through all online sockets and add a list of usernames
         message_list = []
-        for socket, user in clients.items():
+        for socket, user in active_clients.items():
             if socket != self.client_socket:
-                message_list.append(user)
+                message_list.append(user[0])
         
         for user in message_list:
             #if clients[self.client_socket] in blocked[user]:
@@ -271,7 +275,7 @@ class ClientThread(Thread):
     # Method for processing user logouts
     def logout(self):
         if self.client_socket in sockets_list:        
-            message = (f"> {clients[client_socket]} has disconnected from the server")
+            message = (f"> {clients[self.client_socket]} has disconnected from the server")
             # Broadcast presence
             self.broadcast(message)
             message = ("disconnecting_user_logout")
@@ -284,7 +288,7 @@ class ClientThread(Thread):
             self.client_alive = False
             
         else:
-            message = (f"> User {clients[client_socket]} has failed to logout")
+            message = (f"> User {clients[self.client_socket]} has failed to logout")
             self.client_socket.send(message.encode())   
             
     # Method for processing user logins and account creations
@@ -303,6 +307,19 @@ class ClientThread(Thread):
             crediential = value.split()
             # If username exists, get password from client
             if crediential[0] == credentials_username:
+                
+                logged_in = False
+                for value in active_clients.values():
+                    print(value)
+                    if credentials_username in value:
+                        print(f"> {crediential[0]} is already logged in...")
+                        self.client_socket.send(("already_logged_in").encode())
+                        logged_in = True     
+                    
+                if logged_in == True:
+                    create_account = False
+                    break       
+                
                 self.client_socket.send(("username_validated").encode())
                 create_account = False
 
@@ -312,13 +329,14 @@ class ClientThread(Thread):
                 # Check if password matches username
                 attempts = 2
                 while True:
+                                
                     # Get password from client
                     credentials_password = client_socket.recv(1024).decode()
 
                     # Check if password matches
                     if crediential[1] == credentials_password:
                         self.client_socket.send(("user_authorised").encode())
-                                        
+                            
                         # Add client to list of sockets_list
                         sockets_list.append(self.client_socket)
                         clients[client_socket] = credentials_username

@@ -19,7 +19,13 @@ def auth():
         break
 
     attempts = 2
-    if username_validation == "username_validated":
+    if username_validation == "already_logged_in":
+        print("> Error: User is already logged in... Closing program")
+        message = "already_logged_in"
+        client_socket.sendall(message.encode())
+        sys.exit(1)
+        
+    elif username_validation == "username_validated":
         # Check for server response after sending password
         while True:
             password = input("> Enter password: ")
@@ -65,7 +71,6 @@ def send():
             sys.exit(1)
             
         client_socket.sendall(message_send.encode())
-        #client_socket.settimeout(5)
 
 # Function for receiving messages. uses threading
 def recv():
